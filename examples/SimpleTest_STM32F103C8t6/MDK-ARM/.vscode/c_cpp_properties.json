@@ -9,6 +9,7 @@
                 "c:\\Users\\ZBook Fury\\Desktop\\Serial_STM32\\examples\\SimpleTest_STM32F103C8t6\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
                 "c:\\Users\\ZBook Fury\\Desktop\\Serial_STM32\\examples\\SimpleTest_STM32F103C8t6\\Drivers\\CMSIS\\Include",
                 "c:\\Users\\ZBook Fury\\Desktop\\Serial_STM32",
+                "c:\\Users\\ZBook Fury\\Desktop\\Serial_STM32\\libraries\\Stream_STM32",
                 "D:\\keil538a\\ARM\\ARMCLANG\\include",
                 "D:\\keil538a\\ARM\\ARMCLANG\\include\\arm_linux",
                 "D:\\keil538a\\ARM\\ARMCLANG\\include\\arm_linux_compat",

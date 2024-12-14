@@ -6,43 +6,16 @@
 
 Serial::Serial()
 {
-	parameters.BAUDRATE = 9600;
-  parameters.INSTANCE = nullptr;
+	_baudRate = 9600;
+  _huart = nullptr;
+  _timeout = HAL_MAX_DELAY;
 }
 
 
-bool Serial::init(void)
+bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
 {
-  if(_checkParameters() == false)
-  {
-    return false;
-  }
-
-	_huart->Instance = parameters.INSTANCE;
-  _huart->Init.BaudRate = parameters.BAUDRATE;
-  _huart->Init.WordLength = UART_WORDLENGTH_8B;
-  _huart->Init.StopBits = UART_STOPBITS_1;
-  _huart->Init.Parity = UART_PARITY_NONE;
-  _huart->Init.Mode = UART_MODE_TX_RX;
-  _huart->Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  _huart->Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(_huart) != HAL_OK)
-  {
-    errorMessage = "Error Serial: HAL_UAER_Init() is not succeeded.";
-    return false;
-		// __disable_irq();
-		// while (1)
-		// {
-		// }
-  }
-	
-	return true;
-}
-
-bool Serial::_checkParameters(void)
-{
-  bool state = ( (parameters.BAUDRATE == 9600) || (parameters.BAUDRATE == 115200) ) && 
-               (parameters.INSTANCE != nullptr);
+  bool state = ( (baudRate == 9600) || (baudRate == 115200) ) && 
+               (huart != nullptr);
 
   if(state == false)
   {
@@ -50,10 +23,72 @@ bool Serial::_checkParameters(void)
     return false;
   }
 
-  return true;
+  _huart = huart;
+  _baudRate = baudRate;
+
+  _huart->Init.BaudRate = _baudRate;
+
+  if (HAL_UART_Init(_huart) != HAL_OK)
+  {
+    errorMessage = "Error Serial: HAL_UAER_Init() is not succeeded.";
+    return false;
+  }
+	
+	return true;
 }
 
-void Serial::print(std::string data)
+void Serial::setTimeout(unsigned long timeout)
 {
-  HAL_UART_Transmit(_huart, (uint8_t*)data.c_str(), data.size(), 1000);
+  _timeout = timeout;
+}
+
+size_t Serial::print(const std::string& data)
+{
+  return print(data.c_str());
+}
+
+size_t Serial::println(const std::string& data)
+{
+  return print(data + "\n");
+}
+
+size_t Serial::print(const char* data)
+{
+  if(HAL_UART_Transmit(_huart, (uint8_t*)data, strlen(data), _timeout) == HAL_OK)
+  {
+    return 0;
+  }
+
+  return 0;
+}
+
+size_t Serial::println(const char* data)
+{
+  print(data);
+  print("\n");
+  return 0;
+}
+
+size_t Serial::print(uint32_t data)
+{
+    char buffer[11]; // Buffer to hold the ASCII representation of the number (up to 3 digits + null terminator)
+    int length = snprintf(buffer, sizeof(buffer), "%d", data); // Convert the uint8_t to string
+  
+    return print(buffer);
+}
+
+size_t Serial::print(int32_t data)
+{
+    char buffer[11]; // Buffer to hold the ASCII representation of the number (up to 3 digits + null terminator)
+    int length = snprintf(buffer, sizeof(buffer), "%d", data); // Convert the uint8_t to string
+  
+    return print(buffer);
+}
+
+size_t Serial::print(double data, int = 2)
+{
+    char buffer[30]; // Buffer to hold the ASCII representation of the number (up to 3 digits + null terminator)
+    int length = snprintf(buffer, sizeof(buffer), "%lf", data); // Convert the uint8_t to string
+  
+    return print(buffer);
 }

@@ -31,34 +31,13 @@ class Serial
 		
 		/// @brief The last error occurred for the object.
 		std::string errorMessage;
-
-		/**
-		 * @struct ParametersStructure
-		 * @brief Parameters structure
-		 */
-		struct ParametersStructure
-		{
-			/**
-			 * @brief Serial baude rate.
-			 * @note The value can be: 9600, 115200
-			 */
-			uint32_t BAUDRATE;
-			
-			/**
-			 * @brief Universal Synchronous Asynchronous Receiver Transmitter instance pointer
-			 * @note The value can be for example: UART1, UART2M UART3, ... .
-			 */
-			USART_TypeDef *INSTANCE;
-		}parameters;
 		
 		/**
 		 * @brief Default constructor. Init some variables and parameters.
 		 */
 		Serial();
-		
-		bool init(void);
 
-		void begin(unsigned long baud);
+		bool begin(UART_HandleTypeDef* huart, unsigned long baudRate);
     
         void end();
 
@@ -73,33 +52,25 @@ class Serial
 		void flush(void);
 
 		size_t write(uint8_t);
-
-		void print(std::string data);
 	
-	    void setTimeout(unsigned long timeout);  // sets maximum milliseconds to wait for stream data, default is 1 second
+		/**
+		 * @brief Set maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
+		 */
+	    void setTimeout(unsigned long timeout);  
   		
 		unsigned long getTimeout(void) { return _timeout; }
 
-		size_t print(const std::string &);
-		size_t print(const char[]);
-		size_t print(char);
-		size_t print(unsigned char, int);
-		size_t print(int, int);
-		size_t print(unsigned int, int);
-		size_t print(long, int);
-		size_t print(unsigned long, int);
+		size_t print(const std::string& data);
+		size_t print(const char* data);
+		size_t print(uint32_t data);
+		size_t print(int32_t data);
 		size_t print(double, int = 2);
 
-		size_t println(const std::string &s);
-		size_t println(const char[]);
-		size_t println(char);
-		size_t println(unsigned char, int);
-		size_t println(int, int);
-		size_t println(unsigned int, int);
-		size_t println(long, int);
-		size_t println(unsigned long, int);
+		size_t println(const std::string& data);
+		size_t println(const char* data);
+		size_t println(uint32_t data);
+		size_t println(int32_t data);
 		size_t println(double, int = 2);
-		size_t println(void);
 
 	private:
 		
@@ -107,8 +78,7 @@ class Serial
 
 		unsigned long _timeout;
 
-		bool _checkParameters(void);
-	
+		unsigned long _baudRate;
 };
 
 

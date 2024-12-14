@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "main.h": "c",
+        "atomic": "cpp",
+        "chrono": "cpp",
+        "iomanip": "cpp",
+        "istream": "cpp",
+        "list": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "xlocbuf": "cpp",
+        "__config": "cpp",
+        "__tree": "cpp",
+        "locale": "cpp",
+        "charconv": "cpp",
+        "format": "cpp",
+        "xlocale": "cpp",
+        "__locale": "cpp"
+    }
+}

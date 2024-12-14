@@ -1,0 +1,5 @@
+Load "SimpleTest_STM32F103C8t6\\SimpleTest_STM32F103C8t6.axf" 
+_____^
+*** error 56: cannot open file
+Error: Flash Download failed  -  Could not load file 'SimpleTest_STM32F103C8t6\SimpleTest_STM32F103C8t6.axf'
+Flash Load finished at 10:25:42
