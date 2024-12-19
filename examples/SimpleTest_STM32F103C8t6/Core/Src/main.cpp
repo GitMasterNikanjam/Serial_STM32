@@ -42,6 +42,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
+char message[100];
+volatile uint32_t T;
 Serial serial;
 /* USER CODE BEGIN PV */
 
@@ -57,7 +59,13 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart->Instance == huart1.Instance)
+  {
+    serial.TxCpltCallback();
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -90,17 +98,20 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  serial.begin(&huart1, 9600);
+  serial.setTxBufferSize(256);
+  serial.setTimeout(100);
+  serial.setTxMode(SERIAL_MODE_BLOCK);
+  serial.begin(&huart1, 115200);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    std::string str;
-    str.assign("hello nik.");
-    float d = -12.123456789;
-    serial.print(d);
+    strcpy(message, "hello--------------------------------------------------------------------------------nik.\n");
+    serial.println(message);
+    strcpy(message, "mohammad---------------------------------------------------------------------------green.\n");
+    serial.println(message);
     HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -168,7 +179,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 9600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;

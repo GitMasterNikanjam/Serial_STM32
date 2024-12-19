@@ -1,5 +1,8 @@
-Load "SimpleTest_STM32F103C8t6\\SimpleTest_STM32F103C8t6.axf" 
-_____^
-*** error 56: cannot open file
-Error: Flash Download failed  -  Could not load file 'SimpleTest_STM32F103C8t6\SimpleTest_STM32F103C8t6.axf'
-Flash Load finished at 10:25:42
+*** Using Compiler 'V6.19', folder: 'D:\keil538a\ARM\ARMCLANG\Bin'
+Build target 'SimpleTest_STM32F103C8t6'
+compiling Serial.cpp...
+linking...
+Program Size: Code=17172 RO-data=692 RW-data=12 ZI-data=1876  
+FromELF: creating hex file...
+"SimpleTest_STM32F103C8t6\SimpleTest_STM32F103C8t6.axf" - 0 Error(s), 0 Warning(s).
+Build Time Elapsed:  00:00:01
