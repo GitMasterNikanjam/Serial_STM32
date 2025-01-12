@@ -73,12 +73,12 @@ void Serial::setTimeout(unsigned long timeout)
 
 void Serial::setTxBufferSize(uint16_t txSize)
 {
-  stream.setTxBufferSize(txSize);
+  // stream.setTxBufferSize(txSize);
 }
 
 void Serial::setRxBufferSize(uint16_t rxSize)
 {
-  stream.setRxBufferSize(rxSize);
+  // stream.setRxBufferSize(rxSize);
 }
 
 bool Serial::setTxMode(uint8_t mode)
@@ -183,15 +183,37 @@ int16_t Serial::read(void)
 
 size_t Serial::readBytes(char* buffer, size_t length)
 {
-  if(stream.availableRx() == 0)
+  switch(_rxMode)
   {
-    return 0;
+    case SERIAL_MODE_BLOCK:
+      if(HAL_UART_Receive(_huart, (uint8_t*)&buffer, length, _timeout) != HAL_OK)
+      {
+        return length;
+      }
+      else
+      {
+        return 0;
+      }
+    break;
+    case SERIAL_MODE_INTERRUPT:
+      if(stream.availableRx() == 0)
+      {
+        return 0;
+      }
+
+      if(stream.popFrontRxBuffer(buffer, length) != true)
+      {
+        return 0;
+      }
+    break;
+    case SERIAL_MODE_DMA:
+
+    break;
+    default:
+      return 0;
   }
 
-  if(stream.popFrontRxBuffer(buffer, length) != true)
-  {
-    return 0;
-  }
+  
 
   return length;
 }
