@@ -19,8 +19,8 @@ Serial::Serial()
   _rxMode = SERIAL_MODE_INTERRUPT;
   _isTransmitting = false;
   _isReceiving = false;
-  setTxBufferSize(256);
-  setRxBufferSize(256);
+  // setTxBufferSize(256);
+  // setRxBufferSize(256);
 }
 
 
@@ -58,11 +58,6 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
 	return true;
 }
 
-// bool Serial::startRxIT(void)
-// {
-
-// }
-
 // ------------------------------------------------------------------------
 // Set methods:
 
@@ -71,15 +66,15 @@ void Serial::setTimeout(unsigned long timeout)
   _timeout = timeout;
 }
 
-void Serial::setTxBufferSize(uint16_t txSize)
-{
-  // stream.setTxBufferSize(txSize);
-}
+// void Serial::setTxBufferSize(uint16_t txSize)
+// {
+//   // stream.setTxBufferSize(txSize);
+// }
 
-void Serial::setRxBufferSize(uint16_t rxSize)
-{
-  // stream.setRxBufferSize(rxSize);
-}
+// void Serial::setRxBufferSize(uint16_t rxSize)
+// {
+//   // stream.setRxBufferSize(rxSize);
+// }
 
 bool Serial::setTxMode(uint8_t mode)
 {
@@ -316,14 +311,15 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
 
 void Serial::TxCpltCallback(void)
 {
-  _isTransmitting = false;
   stream.removeFrontTxBuffer(_txBufferSize2Transmitting);
   _txBufferSize2Transmitting = stream.availableTx();
   if(_txBufferSize2Transmitting > 0)
   {
     _isTransmitting = true;
     HAL_UART_Transmit_IT(_huart, (uint8_t*)stream.getTxBuffer(), _txBufferSize2Transmitting);
+    return;
   }
+  _isTransmitting = false;
 }
 
 void Serial::RxCpltCallback(void)
@@ -446,5 +442,11 @@ uint16_t Serial::println(double data, uint8_t precision)
 }
 
 // -------------------------------------------------------------------------
+
+void Serial::_EnableIRQ(void)
+{
+  // HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);  // Set priority
+  // HAL_NVIC_EnableIRQ(USART1_IRQn);          // Enable IRQ in NVIC
+}
 
 // ########################################################################################################

@@ -94,19 +94,19 @@ class Serial
 		 */
 		bool setRxMode(uint8_t mode);
 
-		/**
-		 * @brief Change transmit buffer size. Delete Tx buffer and Reallocate it.
-		 * @param txSize: Size of the transmit buffer.
-		 * @warning TxBufferSize should be set before calling the begin() method.
-		 */
-		void setTxBufferSize(uint16_t txSize);
+		// /**
+		//  * @brief Change transmit buffer size. Delete Tx buffer and Reallocate it.
+		//  * @param txSize: Size of the transmit buffer.
+		//  * @warning TxBufferSize should be set before calling the begin() method.
+		//  */
+		// void setTxBufferSize(uint16_t txSize);
 
-		/**
-		 * @brief Change receive buffer size. Delete Rx buffer and Reallocate it.
-		 * @param rxSize: Size of the transmit buffer.
-		 * @warning RxBufferSize should be set before calling the begin() method.
-		 */
-		void setRxBufferSize(uint16_t rxSize);
+		// /**
+		//  * @brief Change receive buffer size. Delete Rx buffer and Reallocate it.
+		//  * @param rxSize: Size of the transmit buffer.
+		//  * @warning RxBufferSize should be set before calling the begin() method.
+		//  */
+		// void setRxBufferSize(uint16_t rxSize);
 		
 		/**
 		 * @brief Set maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
@@ -420,6 +420,8 @@ class Serial
 
 		/// @brief The flag indicate receiving process is running or finished.
 		volatile bool _isReceiving;
+
+		void _EnableIRQ(void);
 };
 
 
