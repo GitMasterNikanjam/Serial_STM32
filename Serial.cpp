@@ -23,6 +23,10 @@ Serial::Serial()
   // setRxBufferSize(256);
 }
 
+bool Serial::begin(unsigned long baudRate)
+{
+  return begin(_huart, baudRate);
+}
 
 bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
 {
@@ -60,6 +64,11 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
 
 // ------------------------------------------------------------------------
 // Set methods:
+
+void Serial::setUart(UART_HandleTypeDef* huart)
+{
+  _huart = huart;
+}
 
 void Serial::setTimeout(unsigned long timeout)
 {

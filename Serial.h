@@ -79,6 +79,20 @@ class Serial
 		bool begin(UART_HandleTypeDef* huart, unsigned long baudRate = 9600);
 
 		/**
+		 * @brief Sets the data rate in bits per second (baud) for serial data transmission. 
+		 * For communicating with Serial Monitor, make sure to use one of the baud rates 9600, 56700 or 115200.
+		 * @param baudRate is the UART speed baudrate. It can just be 9600, 57600 or 115200.
+		 * @note For the Serial object to function correctly, the HAL UART (huart) must be set and configured beforehand.
+		 * @return true if succeeded.
+		 */
+		bool begin(unsigned long baudRate = 9600);
+
+		/**
+		 * @brief Set the HAL UART handle pointer.
+		 */
+		void setUart(UART_HandleTypeDef* huart);
+
+		/**
 		 * @brief Set UART transmit mode that can be Block mode, Interrupt mode, DMA mode.
 		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 3: DMA mode.
 		 * @return true if succeeded.
@@ -423,6 +437,7 @@ class Serial
 
 		void _EnableIRQ(void);
 };
+
 
 
 
