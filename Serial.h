@@ -38,9 +38,17 @@
 // ##############################################################################################
 // Define Public Macros:
 
-#define SERIAL_MODE_BLOCK       0
-#define SERIAL_MODE_INTERRUPT   1
-#define SERIAL_MODE_DMA			2
+#ifndef PROGRAM_MODE_BLOCK
+	#define PROGRAM_MODE_BLOCK       	0
+#endif
+
+#ifndef PROGRAM_MODE_INTERRUPT
+	#define PROGRAM_MODE_INTERRUPT		1
+#endif
+
+#ifndef PROGRAM_MODE_DMA
+	#define PROGRAM_MODE_DMA			2
+#endif
 
 // ##############################################################################################
 
@@ -50,7 +58,6 @@
  * @note - Default transmitting mode is blocking mode.
  * @note - Default recieving mode is interrupt mode.
  * @note - Default baudrate is 9600.
- * @note - Default TX and RX buffer size is equal of Stream object default buffer size.
  */
 class Serial
 {
@@ -64,9 +71,8 @@ class Serial
 		 * @note - Default transmitting mode is blocking mode.
 	     * @note - Default recieving mode is interrupt mode.
 	     * @note - Default baudrate is 9600.
-		 * @note - Default TX and RX buffer size is equal of Stream object default buffer size.
 		 */
-		Serial();
+		Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0);
 
 		/**
 		 * @brief Sets the data rate in bits per second (baud) for serial data transmission. 
@@ -94,19 +100,19 @@ class Serial
 		 */
 		bool setRxMode(uint8_t mode);
 
-		// /**
-		//  * @brief Change transmit buffer size. Delete Tx buffer and Reallocate it.
-		//  * @param txSize: Size of the transmit buffer.
-		//  * @warning TxBufferSize should be set before calling the begin() method.
-		//  */
-		// void setTxBufferSize(uint16_t txSize);
+		/**
+		 * @brief Set transmit buffer.
+		 * @param txBuffer: Transmit buffer pointer.
+		 * @param txBufferSize: Transmit buffer size.
+		 */
+		void setTxBuffer(char* txBuffer, uint16_t txBufferSize);
 
-		// /**
-		//  * @brief Change receive buffer size. Delete Rx buffer and Reallocate it.
-		//  * @param rxSize: Size of the transmit buffer.
-		//  * @warning RxBufferSize should be set before calling the begin() method.
-		//  */
-		// void setRxBufferSize(uint16_t rxSize);
+		/**
+		 * @brief Set receive buffer.
+		 * @param rxBuffer: Recieve buffer pointer.
+		 * @param rxBufferSize: Recieve buffer size.
+		 */
+		void setRxBuffer(char* rxBuffer, uint16_t rxBufferSize);
 		
 		/**
 		 * @brief Set maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY

@@ -43,7 +43,9 @@
 UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
-Serial LAN;
+char txBuffer[1000], rxBuffer[1000];
+Serial LAN(txBuffer, 1000, rxBuffer, 1000);
+char data[100] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,8 +108,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // LAN.print("Hello World!");
+    LAN.print("Hello World!");
     LAN.println(LAN.available());
+    LAN.readBytes(data, 100);
     HAL_Delay(1000);
     /* USER CODE END WHILE */
 

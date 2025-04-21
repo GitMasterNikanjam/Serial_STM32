@@ -10,17 +10,17 @@
 // -----------------------------------------------------------------------------------
 // base and initial methods:
 
-Serial::Serial()
+Serial::Serial(char* txBuffer, size_t txBufferSize, char* rxBuffer, size_t rxBufferSize)
 {
 	_baudRate = 9600;
   _huart = nullptr;
   _timeout = HAL_MAX_DELAY;
-  _txMode = SERIAL_MODE_BLOCK;
-  _rxMode = SERIAL_MODE_INTERRUPT;
+  _txMode = PROGRAM_MODE_BLOCK;
+  _rxMode = PROGRAM_MODE_INTERRUPT;
   _isTransmitting = false;
   _isReceiving = false;
-  // setTxBufferSize(256);
-  // setRxBufferSize(256);
+  setTxBuffer(txBuffer, txBufferSize);
+  setRxBuffer(rxBuffer, rxBufferSize);
 }
 
 
@@ -46,7 +46,7 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
     return false;
   }
 	
-  if(_rxMode == SERIAL_MODE_INTERRUPT)
+  if(_rxMode == PROGRAM_MODE_INTERRUPT)
   {
     _isReceiving = true;
     if(HAL_UART_Receive_IT(_huart, (uint8_t*)&_rxBuffer, 1) != HAL_OK)
@@ -66,19 +66,19 @@ void Serial::setTimeout(unsigned long timeout)
   _timeout = timeout;
 }
 
-// void Serial::setTxBufferSize(uint16_t txSize)
-// {
-//   // stream.setTxBufferSize(txSize);
-// }
+void Serial::setTxBuffer(char* txBuffer, uint16_t txBufferSize)
+{
+  stream.setTxBuffer(txBuffer, txBufferSize);
+}
 
-// void Serial::setRxBufferSize(uint16_t rxSize)
-// {
-//   // stream.setRxBufferSize(rxSize);
-// }
+void Serial::setRxBuffer(char* rxBuffer, uint16_t rxBufferSize)
+{
+  stream.setRxBuffer(rxBuffer, rxBufferSize);
+}
 
 bool Serial::setTxMode(uint8_t mode)
 {
-  if((mode != SERIAL_MODE_BLOCK) && (mode != SERIAL_MODE_INTERRUPT) && (mode != SERIAL_MODE_DMA))
+  if((mode != PROGRAM_MODE_BLOCK) && (mode != PROGRAM_MODE_INTERRUPT) && (mode != PROGRAM_MODE_DMA))
   {
     return false;
   }
@@ -90,7 +90,7 @@ bool Serial::setTxMode(uint8_t mode)
 
 bool Serial::setRxMode(uint8_t mode)
 {
-  if((mode != SERIAL_MODE_BLOCK) && (mode != SERIAL_MODE_INTERRUPT) && (mode != SERIAL_MODE_DMA))
+  if((mode != PROGRAM_MODE_BLOCK) && (mode != PROGRAM_MODE_INTERRUPT) && (mode != PROGRAM_MODE_DMA))
   {
     return false;
   }
@@ -180,7 +180,7 @@ size_t Serial::readBytes(char* buffer, size_t length)
 {
   switch(_rxMode)
   {
-    case SERIAL_MODE_BLOCK:
+    case PROGRAM_MODE_BLOCK:
       if(HAL_UART_Receive(_huart, (uint8_t*)&buffer, length, _timeout) != HAL_OK)
       {
         return length;
@@ -190,7 +190,7 @@ size_t Serial::readBytes(char* buffer, size_t length)
         return 0;
       }
     break;
-    case SERIAL_MODE_INTERRUPT:
+    case PROGRAM_MODE_INTERRUPT:
       if(stream.availableRx() == 0)
       {
         return 0;
@@ -201,7 +201,7 @@ size_t Serial::readBytes(char* buffer, size_t length)
         return 0;
       }
     break;
-    case SERIAL_MODE_DMA:
+    case PROGRAM_MODE_DMA:
 
     break;
     default:
@@ -277,10 +277,10 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
 
   switch(_txMode)
   {
-    case SERIAL_MODE_BLOCK:
+    case PROGRAM_MODE_BLOCK:
       status = HAL_UART_Transmit(_huart, data, length, _timeout);
     break;
-    case SERIAL_MODE_INTERRUPT:
+    case PROGRAM_MODE_INTERRUPT:
       if(_isTransmitting == true)
       {
         stream.pushBackTxBuffer((char*)data, length);
@@ -291,7 +291,7 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
         status = HAL_UART_Transmit_IT(_huart, data, length);
       }
     break;
-    case SERIAL_MODE_DMA:
+    case PROGRAM_MODE_DMA:
 
     break;
     default:
