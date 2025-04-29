@@ -32,8 +32,8 @@
 #endif
 
 #include <string>
-#include <stdio.h>
 #include "Stream.h"
+// #include <stdio.h>			// Standard Input/Output library
 
 // ##############################################################################################
 // Define Public Macros:
@@ -63,14 +63,19 @@ class Serial
 {
 	public:
 		
-		/// @brief The last error occurred for the object.
-		std::string errorMessage;
+		/**
+		 * @brief The last error occurred for the object.
+		 * @warning Message length must be lower than 32 characters.
+		 *  */ 
+		char errorMessage[32];
 		
 		/**
 		 * @brief Default constructor. Init some variables and parameters to Default value.
 		 * @note - Default transmitting mode is blocking mode.
 	     * @note - Default recieving mode is interrupt mode.
 	     * @note - Default baudrate is 9600.
+		 * @param txBuffer: is the buffer for serial transmitting.
+		 * @param rxBuffer: is the buffer for serial recieving.
 		 */
 		Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0);
 
@@ -100,7 +105,7 @@ class Serial
 
 		/**
 		 * @brief Set UART transmit mode that can be Block mode, Interrupt mode, DMA mode.
-		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 3: DMA mode.
+		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 2: DMA mode.
 		 * @return true if succeeded.
 		 * @warning TxMode should be set before calling the begin() method.
 		 */
@@ -108,7 +113,7 @@ class Serial
 
 		/**
 		 * @brief Set UART receive mode that can be Block mode, Interrupt mode, DMA mode.
-		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 3: DMA mode.
+		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 2: DMA mode.
 		 * @return true if succeeded.
 		 * @warning RxMode should be set before calling the begin() method.
 		 */
@@ -130,11 +135,13 @@ class Serial
 		
 		/**
 		 * @brief Set maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
+		 * @note Timeout used just in blocking mode.
 		 */
 	    void setTimeout(unsigned long timeout);  
   		
 		/**
 		 * @brief Get maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
+		 * @note Timeout used just in blocking mode.
 		 */
 		unsigned long getTimeout(void) { return _timeout; }
 
@@ -143,6 +150,35 @@ class Serial
 		 * This is data that’s already arrived and stored in the serial receive buffer
 		 */
 		uint16_t available(void);
+
+		/**
+		 * @brief Get the number of bytes (characters) available for writing in the serial buffer without blocking the write operation.
+		 */
+		size_t availableForWrite(void);
+
+		/**
+		 * @brief Clear all data on the TxBuffer.
+		 */
+		void clearTxBuffer();
+
+		/**
+		 * @brief Clear all data on the RxBuffer.
+		 */
+		void clearRxBuffer();
+
+		/**
+		 * @brief Remove certain number elements from front of TX buffer.
+		 * @return true if succeeded.
+		 * @note - Error code be 1 if: "Not enough data in the buffer to remove"
+		 *  */
+		bool removeFrontTxBuffer(uint32_t dataSize = 1);
+
+		/**
+		 * @brief Remove certain number elements from front of RX buffer.
+		 * @return true if succeeded.
+		 * @note - Error code be 1 if: "Not enough data in the buffer to remove"
+		 *  */
+		bool removeFrontRxBuffer(uint32_t dataSize = 1);
 
 		/**
 		 * @brief Returns the next byte (character) of incoming serial data without removing it from the internal serial buffer. 
@@ -185,9 +221,10 @@ class Serial
 
 		/**
 		 * @brief Read all data on RXBuffer and store it in input buffer.
+		 * @param maxLength: the max number of bytes to read.
 		 * @return The number of bytes placed in the buffer.
 		 */
-		size_t readAll(char* buffer);
+		size_t readAll(char* buffer, size_t maxLength);
 		
 		/**
 		 * @brief Read all data on RXBuffer and return to string data.
@@ -203,11 +240,6 @@ class Serial
 		 * @brief Rx Transfer completed interrupt callbacks.
 		 */
 		void RxCpltCallback(void);
-
-		/**
-		 * @brief Get the number of bytes (characters) available for writing in the serial buffer without blocking the write operation.
-		 */
-		size_t availableForWrite(void);
 
 		/**
 		 * @brief reads data from the serial buffer until the target is found. The function returns true if target is found, 

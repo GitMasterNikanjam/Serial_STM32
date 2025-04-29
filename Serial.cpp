@@ -35,7 +35,7 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
 
   if(state == false)
   {
-    errorMessage = "Error Serial: One or some parameters are not correct.";
+    sprintf(errorMessage, "Parameters");
     return false;
   }
 
@@ -46,7 +46,7 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
 
   if (HAL_UART_Init(_huart) != HAL_OK)
   {
-    errorMessage = "Error Serial: HAL_UAER_Init() is not succeeded.";
+    sprintf(errorMessage, "HAL_UAER_Init()");
     return false;
   }
 	
@@ -120,6 +120,26 @@ uint16_t Serial::available(void)
 size_t Serial::availableForWrite(void)
 {
   return stream.availableTx();
+} 
+
+void Serial::clearTxBuffer() 
+{
+  stream.clearTxBuffer();
+}
+
+void Serial::clearRxBuffer() 
+{
+  stream.clearRxBuffer();
+}
+
+bool Serial::removeFrontTxBuffer(uint32_t dataSize)
+{
+  return stream.removeFrontTxBuffer(dataSize);
+}
+
+bool Serial::removeFrontRxBuffer(uint32_t dataSize)
+{
+  return stream.removeFrontRxBuffer(dataSize);
 }
 
 bool Serial::find(const char* target, size_t length)
@@ -217,8 +237,6 @@ size_t Serial::readBytes(char* buffer, size_t length)
       return 0;
   }
 
-  
-
   return length;
 }
 
@@ -241,10 +259,15 @@ size_t Serial::readBytesUntil(char character, char* buffer, size_t length)
     return bytesRead;  // Return the number of bytes read
 }
 
-size_t Serial::readAll(char* buffer)
+size_t Serial::readAll(char* buffer, size_t maxLength)
 {
   size_t length = stream.availableRx();
 
+  if(length > maxLength)
+  {
+    length = maxLength;
+  }
+  
   if(stream.popFrontRxBuffer(buffer, length) == false)
   {
     return 0;
