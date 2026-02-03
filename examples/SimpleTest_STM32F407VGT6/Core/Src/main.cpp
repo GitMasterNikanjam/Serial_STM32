@@ -41,6 +41,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart5;
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 char txBuffer[1000], rxBuffer[1000];
@@ -51,11 +52,12 @@ char data[100] = {0};
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_USART1_UART_Init(void);
 static void MX_UART5_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  if(huart->Instance == UART5)
+  if(huart->Instance == USART1)
   {
     LAN.RxCpltCallback();
   }
@@ -96,9 +98,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
-  LAN.begin(&huart5, 115200);
+  LAN.setRxMode(PROGRAM_MODE_INTERRUPT);
+  LAN.begin(&huart1, 57600);
   HAL_GPIO_WritePin(LAN_RST_GPIO_Port, LAN_RST_Pin, GPIO_PIN_RESET);
   HAL_Delay(100);
   HAL_GPIO_WritePin(LAN_RST_GPIO_Port, LAN_RST_Pin, GPIO_PIN_SET);
@@ -108,9 +112,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    LAN.print("Hello World!");
-    LAN.println(LAN.available());
-    LAN.readBytes(data, 100);
+    // LAN.println("Hello World!");
+    size_t rxnum = LAN.available();
+    if(rxnum > 0)
+    {
+      LAN.print("rxnum: "); 
+      LAN.println(rxnum);
+      LAN.readBytes(data, 100);
+      LAN.println(data);
+    }
+    
     HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -140,7 +151,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
@@ -198,6 +209,39 @@ static void MX_UART5_Init(void)
   /* USER CODE BEGIN UART5_Init 2 */
 
   /* USER CODE END UART5_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
