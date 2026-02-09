@@ -104,6 +104,11 @@ class Serial
 		void setUart(UART_HandleTypeDef* huart);
 
 		/**
+		 * @brief Get the HAL UART handle pointer.
+		 */
+		UART_HandleTypeDef* getUart(void) {return _huart;};
+
+		/**
 		 * @brief Set UART transmit mode that can be Block mode, Interrupt mode, DMA mode.
 		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 2: DMA mode.
 		 * @return true if succeeded.
