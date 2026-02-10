@@ -276,19 +276,21 @@ size_t Serial::readAll(char* buffer, size_t maxLength)
   return length;
 }
 
-std::string Serial::readAll(void)
-{
-  size_t length = stream.availableRx();
-  std::string buffer;
-
-  if(stream.popAllRxBuffer(&buffer) == false)
+#if defined(__linux__)
+  std::string Serial::readAll(void)
   {
-    buffer.assign("");
+    size_t length = stream.availableRx();
+    std::string buffer;
+
+    if(stream.popAllRxBuffer(&buffer) == false)
+    {
+      buffer.assign("");
+      return buffer;
+    }
+
     return buffer;
   }
-
-  return buffer;
-}
+#endif
 
 // ---------------------------------------------------------------------------
 // write, flush method
