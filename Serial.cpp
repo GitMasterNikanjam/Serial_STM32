@@ -210,7 +210,7 @@ size_t Serial::readBytes(char* buffer, size_t length)
   switch(_rxMode)
   {
     case PROGRAM_MODE_BLOCK:
-      if(HAL_UART_Receive(_huart, (uint8_t*)&buffer, length, _timeout) != HAL_OK)
+      if(HAL_UART_Receive(_huart, (uint8_t*)buffer, length, _timeout) == HAL_OK)
       {
         return length;
       }
@@ -297,7 +297,8 @@ size_t Serial::readAll(char* buffer, size_t maxLength)
 
 void Serial::flush(void)
 {
-  while(_txBufferSize2Transmitting > 0);
+  // while(_txBufferSize2Transmitting > 0);
+  while (_isTransmitting || stream.availableTx() > 0) { }
 }
 
 uint16_t Serial::write(uint8_t data)
@@ -307,7 +308,9 @@ uint16_t Serial::write(uint8_t data)
 
 uint16_t Serial::write(uint8_t* data, uint16_t length)
 {
-  HAL_StatusTypeDef status;
+  if (_huart == nullptr || data == nullptr || length == 0) return 0;
+
+  HAL_StatusTypeDef status = HAL_OK;
 
   switch(_txMode)
   {
@@ -315,15 +318,29 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
       status = HAL_UART_Transmit(_huart, data, length, _timeout);
     break;
     case PROGRAM_MODE_INTERRUPT:
-      if(_isTransmitting == true)
+
+      // Always queue into internal buffer first
+        if (!stream.pushBackTxBuffer((char*)data, length))
+            return 0; // buffer full or failed
+      
+      // If not currently transmitting, start sending from internal buffer
+      if (_isTransmitting == false)
       {
-        stream.pushBackTxBuffer((char*)data, length);
+          _isTransmitting = true;
+
+          _txBufferSize2Transmitting = stream.availableTx(); // or choose a chunk size
+          status = HAL_UART_Transmit_IT(_huart, (uint8_t*)stream.getTxBuffer(), _txBufferSize2Transmitting);
       }
-      else
-      {
-        _isTransmitting = true;
-        status = HAL_UART_Transmit_IT(_huart, data, length);
-      }
+
+      // if(_isTransmitting == true)
+      // {
+      //   stream.pushBackTxBuffer((char*)data, length);
+      // }
+      // else
+      // {
+      //   _isTransmitting = true;
+      //   status = HAL_UART_Transmit_IT(_huart, data, length);
+      // }
     break;
     case PROGRAM_MODE_DMA:
 
@@ -334,6 +351,7 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
 
   if(status != HAL_OK)
   {
+    _isTransmitting = false;
     return 0;
   }
 
@@ -345,15 +363,23 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
 
 void Serial::TxCpltCallback(void)
 {
+  // remove the bytes we just sent
   stream.removeFrontTxBuffer(_txBufferSize2Transmitting);
-  _txBufferSize2Transmitting = stream.availableTx();
-  if(_txBufferSize2Transmitting > 0)
+
+  uint16_t remaining = stream.availableTx();
+
+  if(remaining > 0)
   {
+    _txBufferSize2Transmitting = remaining; // or send a max chunk
     _isTransmitting = true;
+
     HAL_UART_Transmit_IT(_huart, (uint8_t*)stream.getTxBuffer(), _txBufferSize2Transmitting);
-    return;
   }
-  _isTransmitting = false;
+  else
+  {
+    _isTransmitting = false;
+    _txBufferSize2Transmitting = 0;
+  }
 }
 
 void Serial::RxCpltCallback(void)
