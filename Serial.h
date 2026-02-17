@@ -77,7 +77,7 @@ class Serial
 		 * @param txBuffer: is the buffer for serial transmitting.
 		 * @param rxBuffer: is the buffer for serial recieving.
 		 */
-		Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0);
+		Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0, BufferType txType = BUFFER_LINEAR, BufferType rxType = BUFFER_LINEAR);
 
 		/**
 		 * @brief Sets the data rate in bits per second (baud) for serial data transmission. 
@@ -129,15 +129,17 @@ class Serial
 		 * @param txBuffer: Transmit buffer pointer.
 		 * @param txBufferSize: Transmit buffer size.
 		 */
-		void setTxBuffer(char* txBuffer, uint16_t txBufferSize);
+		void setTxBuffer(char* txBuffer, uint16_t txBufferSize, BufferType txType = BUFFER_LINEAR);
 
 		/**
 		 * @brief Set receive buffer.
 		 * @param rxBuffer: Recieve buffer pointer.
 		 * @param rxBufferSize: Recieve buffer size.
 		 */
-		void setRxBuffer(char* rxBuffer, uint16_t rxBufferSize);
+		void setRxBuffer(char* rxBuffer, uint16_t rxBufferSize, BufferType rxType = BUFFER_LINEAR);
 		
+		void setBufferTypes(BufferType txType, BufferType rxType);
+
 		/**
 		 * @brief Set maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
 		 * @note Timeout used just in blocking mode.
@@ -281,7 +283,9 @@ class Serial
 		/**
 		 * @brief Waits for the transmission of outgoing serial data to complete.
 		 */
-		void flush(void);
+		bool flush(uint32_t timeoutMs);
+
+		bool kickTx();
 
 		/**
 		 * @brief Writes binary data to the serial port.
@@ -477,6 +481,8 @@ class Serial
 
 		/// @brief The flag indicate receiving process is running or finished.
 		volatile bool _isReceiving;
+
+		bool _startTxIfIdle(void);
 
 		void _EnableIRQ(void);
 };
