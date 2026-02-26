@@ -56,6 +56,30 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
     return false;
   }
 
+  // Safety: interrupt-driven TX/RX must use ring buffers.
+  // Linear buffers rely on memmove(), which can corrupt data when used concurrently
+  // with HAL interrupt/DMA transfers.
+  if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferType() != BUFFER_RING)
+  {
+    std::snprintf(errorMessage, sizeof(errorMessage), "Tx ring buf");
+    return false;
+  }
+  if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferSize() < 2)
+  {
+    std::snprintf(errorMessage, sizeof(errorMessage), "Tx buf size");
+    return false;
+  }
+  if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferType() != BUFFER_RING)
+  {
+    std::snprintf(errorMessage, sizeof(errorMessage), "Rx ring buf");
+    return false;
+  }
+  if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferSize() < 2)
+  {
+    std::snprintf(errorMessage, sizeof(errorMessage), "Rx buf size");
+    return false;
+  }
+  
   _huart = huart;
   _baudRate = baudRate;
 
@@ -154,7 +178,12 @@ uint16_t Serial::available(void)
 
 size_t Serial::availableForWrite(void)
 {
-  return stream.availableTx();
+  // Arduino-style semantics: bytes that can be written without blocking.
+  // In blocking mode, write() may block on the peripheral, so report 0.
+  if (_txMode == PROGRAM_MODE_BLOCK)
+    return 0;
+
+  return stream.freeTx();
 } 
 
 void Serial::clearTxBuffer() 
@@ -277,9 +306,11 @@ int16_t Serial::peek(void)
     return -1;
   }
 
-  const char* data = stream.getRxBuffer();
+  const char* p = stream.rxReadPtr();
+  if (p == nullptr)
+    return -1;
 
-  return (uint8_t)*data;
+  return (uint8_t)*p;
 }
 
 int16_t Serial::read(void)
@@ -333,7 +364,9 @@ size_t Serial::readBytes(char* buffer, size_t length)
       }
     break;
     case PROGRAM_MODE_DMA:
-
+      // Not implemented (yet)
+      std::snprintf(errorMessage, sizeof(errorMessage), "DMA read NI");
+      return 0;
     break;
     default:
       return 0;
@@ -344,16 +377,31 @@ size_t Serial::readBytes(char* buffer, size_t length)
 
 size_t Serial::readBytesUntil(char character, char* buffer, size_t length)
 {
+    if (buffer == nullptr || length == 0)
+          return 0;
+
+    if (length == 1)
+    {
+        buffer[0] = '\0';
+        return 0;
+    }
+
     buffer[0] = '\0';  // Initialize buffer as an empty string
     size_t bytesRead = 0;
 
     for(size_t i = 0; i < length - 1; i++)  // Loop stops before reaching the last index
     {
-        int16_t data = read();  // Read data from serial
-        if (data == -1 || data == character)  // Check if end condition is met
+        const unsigned long startTick = HAL_GetTick();
+        int16_t data = -1;
+        // Wait (up to timeout) for the next byte
+        while (data == -1 && !isTimedOut(startTick, _timeout))
         {
-            break;
+            data = read();
         }
+
+        if (data == -1 || data == character)  // end condition
+            break;
+
         buffer[bytesRead++] = static_cast<char>(data);  // Add the read character to buffer
     }
     
@@ -381,10 +429,9 @@ size_t Serial::readAll(char* buffer, size_t maxLength)
 #if defined(__linux__)
   std::string Serial::readAll(void)
   {
-    size_t length = stream.availableRx();
     std::string buffer;
 
-    if(stream.popAllRxBuffer(&buffer) == false)
+    if(stream.popAllRxBuffer(buffer) == false)
     {
       buffer.assign("");
       return buffer;
@@ -453,7 +500,9 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
       status = HAL_OK;
     break;
     case PROGRAM_MODE_DMA:
-
+      // Not implemented (yet)
+      std::snprintf(errorMessage, sizeof(errorMessage), "DMA write NI");
+      return 0;
     break;
     default:
       return 0;

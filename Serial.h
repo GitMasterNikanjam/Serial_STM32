@@ -233,10 +233,12 @@ class Serial
 		 */
 		size_t readAll(char* buffer, size_t maxLength);
 		
-		/**
-		 * @brief Read all data on RXBuffer and return to string data.
-		 */
-		std::string readAll(void);
+		#if defined(__linux__)
+			/**
+			 * @brief Read all data on RXBuffer and return to string data.
+			 */
+			std::string readAll(void);
+		#endif
 
 		/**
 		 * @brief Tx Transfer completed interrupt callbacks.
