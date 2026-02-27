@@ -1,27 +1,30 @@
 #pragma once
 
-// ##############################################################################################
-// MCU Select:
+/**
+ * @file Serial.h
+ * @brief Arduino-like UART serial wrapper built on STM32Cube HAL.
+ *
+ * This header declares the ::Serial class, which combines:
+ * - STM32Cube HAL UART (blocking / interrupt modes; DMA reserved for future use)
+ * - A Stream-based TX/RX software buffer (see Stream.h)
+ *
+ * MCU selection
+ * -------------
+ * This header expects a `mcu_select.h` next to it that defines exactly one MCU family:
+ * @code{.c}
+ * // mcu_select.h
+ * // #define STM32F1
+ * // #define STM32F4
+ * // #define STM32H7
+ * @endcode
+ *
+ * @note `mcu_select.h` is not part of this library file; it must be provided by the user/project.
+ */
 
 #include "mcu_select.h"
 
-/*
-    If there is not exist mcu_select.h at beside of this header file, Create it and put this bellow following content. 
-    Then select your desired MCU that want work with.
-*/
-// ----------------------------------------------------------------
-// mcu_select.h file:
-
-// Define the target MCU family here
-// Uncomment the desired MCU family definition below:
-
-// #define STM32F1
-// #define STM32F4
-// #define STM32H7
-
-// ----------------------------------------------------------------
 // ##############################################################################################
-// Include libraries:
+// STM32 HAL includes (selected by mcu_select.h)
 
 #if defined(STM32F1)
 #include "stm32f1xx_hal.h"
@@ -31,21 +34,39 @@
 #include "stm32h7xx_hal.h"
 #endif
 
-#include <string>
+#include <string>				// Provides the std::string class for working with dynamic strings in C++
 #include "Stream.h"
-// #include <stdio.h>			// Standard Input/Output library
 
 // ##############################################################################################
-// Define Public Macros:
+// Public macros (UART programming mode)
 
+/**
+ * @def PROGRAM_MODE_BLOCK
+ * @brief Blocking mode (HAL_UART_Transmit / HAL_UART_Receive).
+ */
 #ifndef PROGRAM_MODE_BLOCK
 	#define PROGRAM_MODE_BLOCK       	0
 #endif
 
+/**
+ * @def PROGRAM_MODE_INTERRUPT
+ * @brief Interrupt mode (HAL_UART_Transmit_IT / HAL_UART_Receive_IT).
+ *
+ * @note When using interrupt mode, this class requires **ring** buffers in ::Stream for the
+ *       corresponding direction (TX and/or RX). Linear buffers rely on memmove() and can corrupt
+ *       data when used concurrently with HAL interrupt transfers.
+ */
 #ifndef PROGRAM_MODE_INTERRUPT
 	#define PROGRAM_MODE_INTERRUPT		1
 #endif
 
+/**
+ * @def PROGRAM_MODE_DMA
+ * @brief DMA mode (reserved).
+ *
+ * DMA mode is declared for API completeness but is currently not implemented in Serial.cpp.
+ * Calls that request DMA may fail and/or set ::Serial::errorMessage accordingly.
+ */
 #ifndef PROGRAM_MODE_DMA
 	#define PROGRAM_MODE_DMA			2
 #endif
@@ -53,260 +74,381 @@
 // ##############################################################################################
 
 /**
- * @brief @class Serial
- * @brief This class can handle data transmit and receive for UART communication ports.
- * @note - Default transmitting mode is blocking mode.
- * @note - Default recieving mode is interrupt mode.
- * @note - Default baudrate is 9600.
+ * @class Serial
+ * @brief UART serial port helper with optional TX/RX software buffering.
+ *
+ * The interface is inspired by Arduino's `HardwareSerial` (e.g. `begin()`, `available()`, `read()`,
+ * `print()`), but it targets STM32Cube HAL.
+ *
+ * Default configuration
+ * ---------------------
+ * - TX mode: ::PROGRAM_MODE_BLOCK
+ * - RX mode: ::PROGRAM_MODE_INTERRUPT
+ * - Baud rate: 9600
+ *
+ * Interrupt callbacks
+ * -------------------
+ * If you use interrupt-based RX/TX, connect the HAL callbacks to the matching methods:
+ * @code{.c}
+ * void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+ * {
+ *   if (huart == Serial1.getUart()) { Serial1.TxCpltCallback(); }
+ * }
+ *
+ * void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+ * {
+ *   if (huart == Serial1.getUart()) { Serial1.RxCpltCallback(); }
+ * }
+ * @endcode
+ *
+ * @warning In interrupt mode you must provide ring buffers via setTxBuffer()/setRxBuffer()
+ *          (or the constructor). ::Serial::begin() will fail if interrupt mode is selected but the
+ *          corresponding Stream buffer type is not ::BUFFER_RING or its size is < 2.
  */
 class Serial
 {
 	public:
 		
 		/**
-		 * @brief The last error occurred for the object.
-		 * @warning Message length must be lower than 32 characters.
-		 *  */ 
+		 * @brief Human-readable description of the last error.
+		 *
+		 * The string is always null-terminated and truncated to fit this buffer.
+		 *
+		 * @warning Keep messages shorter than 32 characters including the terminator.
+		 */
 		char errorMessage[32];
 		
 		/**
-		 * @brief Default constructor. Init some variables and parameters to Default value.
-		 * @note - Default transmitting mode is blocking mode.
-	     * @note - Default recieving mode is interrupt mode.
-	     * @note - Default baudrate is 9600.
-		 * @param txBuffer: is the buffer for serial transmitting.
-		 * @param rxBuffer: is the buffer for serial recieving.
+		 * @brief Construct a Serial instance and optionally attach Stream buffers.
+		 *
+		 * @param txBuffer        Pointer to TX buffer storage (may be nullptr).
+		 * @param txBufferSize    Size of the TX buffer in bytes.
+		 * @param rxBuffer        Pointer to RX buffer storage (may be nullptr).
+		 * @param rxBufferSize    Size of the RX buffer in bytes.
+		 * @param txType          TX buffer type (see ::BufferType in Stream.h).
+		 * @param rxType          RX buffer type (see ::BufferType in Stream.h).
+		 *
+		 * @note Buffers can be configured later using setTxBuffer()/setRxBuffer().
 		 */
 		Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0, BufferType txType = BUFFER_LINEAR, BufferType rxType = BUFFER_LINEAR);
 
 		/**
-		 * @brief Sets the data rate in bits per second (baud) for serial data transmission. 
-		 * For communicating with Serial Monitor, make sure to use one of the baud rates 9600, 56700 or 115200.
-		 * @param huart is The HAL UART handle pointer. 
-		 * @param baudRate is the UART speed baudrate. It can just be 9600, 57600 or 115200.
-		 * @note For the Serial object to function correctly, the HAL UART (huart) must be set and configured beforehand.
-		 * @return true if succeeded.
+		 * @brief Initialize the UART peripheral and start RX/TX according to the selected modes.
+		 *
+		 * @param huart     Pointer to a pre-initialized HAL UART handle.
+		 * @param baudRate  UART baud rate. Supported values: 9600, 57600, 115200.
+		 * @return true on success, false otherwise (see ::errorMessage).
+		 *
+		 * @note The HAL UART handle must be configured (instance, word length, stop bits, parity, etc.)
+		 *       before calling begin(); this function updates `huart->Init.BaudRate` and calls
+		 *       HAL_UART_Init().
+		 *
+		 * @warning If RX mode is ::PROGRAM_MODE_INTERRUPT, begin() will arm an initial
+		 *          HAL_UART_Receive_IT() for 1 byte and continuously re-arm it in RxCpltCallback().
+		 * @warning If TX mode is ::PROGRAM_MODE_INTERRUPT, begin() will try to start an initial
+		 *          interrupt-driven transmit if TX data is already queued.
 		 */
 		bool begin(UART_HandleTypeDef* huart, unsigned long baudRate = 9600);
 
 		/**
-		 * @brief Sets the data rate in bits per second (baud) for serial data transmission. 
-		 * For communicating with Serial Monitor, make sure to use one of the baud rates 9600, 56700 or 115200.
-		 * @param baudRate is the UART speed baudrate. It can just be 9600, 57600 or 115200.
-		 * @note For the Serial object to function correctly, the HAL UART (huart) must be set and configured beforehand.
-		 * @return true if succeeded.
+		 * @brief Initialize the UART peripheral using the handle previously set via setUart().
+		 *
+		 * @param baudRate  UART baud rate. Supported values: 9600, 57600, 115200.
+		 * @return true on success, false otherwise (see ::errorMessage).
+		 *
+		 * @warning This overload requires a valid UART handle to have been set earlier with setUart().
 		 */
 		bool begin(unsigned long baudRate = 9600);
 
 		/**
-		 * @brief Set the HAL UART handle pointer.
+		 * @brief Set the HAL UART handle used by this Serial instance.
+		 * @param huart Pointer to a HAL UART handle (may be nullptr).
+		 *
+		 * @note The Serial instance does not take ownership of the handle.
 		 */
 		void setUart(UART_HandleTypeDef* huart);
 
 		/**
-		 * @brief Get the HAL UART handle pointer.
+		 * @brief Get the current HAL UART handle.
+		 * @return Pointer to the HAL UART handle, or nullptr if not set.
 		 */
 		UART_HandleTypeDef* getUart(void) {return _huart;};
 
 		/**
-		 * @brief Set UART transmit mode that can be Block mode, Interrupt mode, DMA mode.
-		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 2: DMA mode.
-		 * @return true if succeeded.
-		 * @warning TxMode should be set before calling the begin() method.
+		 * @brief Set UART transmit (TX) mode.
+		 *
+		 * @param mode One of ::PROGRAM_MODE_BLOCK, ::PROGRAM_MODE_INTERRUPT, ::PROGRAM_MODE_DMA.
+		 * @return true if the value is accepted; false if @p mode is invalid.
+		 *
+		 * @note Set the mode before calling begin().
+		 * @warning Interrupt TX requires a ring TX buffer (see setTxBuffer()).
 		 */
 		bool setTxMode(uint8_t mode);
 
 		/**
-		 * @brief Set UART receive mode that can be Block mode, Interrupt mode, DMA mode.
-		 * @param mode: Can be 0: Block mode, 1: Interrupt mode, 2: DMA mode.
-		 * @return true if succeeded.
-		 * @warning RxMode should be set before calling the begin() method.
+		 * @brief Set UART receive (RX) mode.
+		 *
+		 * @param mode One of ::PROGRAM_MODE_BLOCK, ::PROGRAM_MODE_INTERRUPT, ::PROGRAM_MODE_DMA.
+		 * @return true if the value is accepted; false if @p mode is invalid.
+		 *
+		 * @note Set the mode before calling begin().
+		 * @warning Interrupt RX requires a ring RX buffer (see setRxBuffer()).
 		 */
 		bool setRxMode(uint8_t mode);
 
 		/**
-		 * @brief Set transmit buffer.
-		 * @param txBuffer: Transmit buffer pointer.
-		 * @param txBufferSize: Transmit buffer size.
+		 * @brief Configure the TX software buffer used by the internal ::Stream.
+		 *
+		 * @param txBuffer      Pointer to TX buffer storage.
+		 * @param txBufferSize  Size of the TX buffer in bytes.
+		 * @param txType        Buffer type (e.g. ::BUFFER_LINEAR or ::BUFFER_RING).
+		 *
+		 * @warning If TX mode is ::PROGRAM_MODE_INTERRUPT, @p txType must be ::BUFFER_RING and the
+		 *          buffer size must be at least 2.
 		 */
 		void setTxBuffer(char* txBuffer, uint16_t txBufferSize, BufferType txType = BUFFER_LINEAR);
 
 		/**
-		 * @brief Set receive buffer.
-		 * @param rxBuffer: Recieve buffer pointer.
-		 * @param rxBufferSize: Recieve buffer size.
+		 * @brief Configure the RX software buffer used by the internal ::Stream.
+		 *
+		 * @param rxBuffer      Pointer to RX buffer storage.
+		 * @param rxBufferSize  Size of the RX buffer in bytes.
+		 * @param rxType        Buffer type (e.g. ::BUFFER_LINEAR or ::BUFFER_RING).
+		 *
+		 * @warning If RX mode is ::PROGRAM_MODE_INTERRUPT, @p rxType must be ::BUFFER_RING and the
+		 *          buffer size must be at least 2.
 		 */
 		void setRxBuffer(char* rxBuffer, uint16_t rxBufferSize, BufferType rxType = BUFFER_LINEAR);
-		
+
+		/**
+		 * @brief Set both TX and RX buffer types on the internal ::Stream.
+		 *
+		 * This is a convenience wrapper around Stream::setBufferTypes().
+		 *
+		 * @param txType TX buffer type.
+		 * @param rxType RX buffer type.
+		 */
 		void setBufferTypes(BufferType txType, BufferType rxType);
 
 		/**
-		 * @brief Set maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
-		 * @note Timeout used just in blocking mode.
+		 * @brief Set the maximum time to wait for blocking operations (in milliseconds).
+		 * @param timeout Timeout in milliseconds, or HAL_MAX_DELAY to wait indefinitely.
+		 *
+		 * @note This value is used by blocking-mode HAL calls (e.g. HAL_UART_Transmit / HAL_UART_Receive)
+		 *       and by helpers like find()/findUntil() that implement timeouts via HAL_GetTick().
 		 */
 	    void setTimeout(unsigned long timeout);  
   		
 		/**
-		 * @brief Get maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
-		 * @note Timeout used just in blocking mode.
+		 * @brief Get the timeout configured by setTimeout().
+		 * @return Timeout in milliseconds, or HAL_MAX_DELAY.
 		 */
 		unsigned long getTimeout(void) { return _timeout; }
 
 		/**
-		 * @brief Get the number of bytes (characters) available for reading from the serial port. 
-		 * This is data that’s already arrived and stored in the serial receive buffer
+		 * @brief Number of bytes available in the RX software buffer.
+		 *
+		 * @return Count of bytes currently buffered and ready to read.
+		 *
+		 * @note This count reflects the internal Stream RX buffer (typically filled in RxCpltCallback()).
 		 */
 		uint16_t available(void);
 
 		/**
-		 * @brief Get the number of bytes (characters) available for writing in the serial buffer without blocking the write operation.
+		 * @brief Number of bytes that can be queued for TX without blocking.
+		 *
+		 * @return Free space in the TX software buffer when using interrupt TX; 0 in blocking mode.
+		 *
+		 * @note In ::PROGRAM_MODE_BLOCK, write() transmits directly through HAL and may block on the
+		 *       peripheral, so this function returns 0 (Arduino-style "non-blocking capacity" semantics).
 		 */
 		size_t availableForWrite(void);
 
 		/**
-		 * @brief Clear all data on the TxBuffer.
+		 * @brief Clear the internal TX software buffer (does not cancel an active HAL transfer).
 		 */
 		void clearTxBuffer();
 
 		/**
-		 * @brief Clear all data on the RxBuffer.
+		 * @brief Clear the internal RX software buffer.
 		 */
 		void clearRxBuffer();
 
 		/**
-		 * @brief Remove certain number elements from front of TX buffer.
-		 * @return true if succeeded.
-		 * @note - Error code be 1 if: "Not enough data in the buffer to remove"
-		 *  */
+		 * @brief Remove bytes from the front of the TX buffer.
+		 * @param dataSize Number of bytes to remove.
+		 * @return true on success, false if fewer than @p dataSize bytes are available.
+		 */
 		bool removeFrontTxBuffer(uint32_t dataSize = 1);
 
 		/**
-		 * @brief Remove certain number elements from front of RX buffer.
-		 * @return true if succeeded.
-		 * @note - Error code be 1 if: "Not enough data in the buffer to remove"
-		 *  */
+		 * @brief Remove bytes from the front of the RX buffer.
+		 * @param dataSize Number of bytes to remove.
+		 * @return true on success, false if fewer than @p dataSize bytes are available.
+		 */
 		bool removeFrontRxBuffer(uint32_t dataSize = 1);
 
 		/**
-		 * @brief Returns the next byte (character) of incoming serial data without removing it from the internal serial buffer. 
-		 * That is, successive calls to peek() will return the same character, as will the next call to read().
-		 * @return The first byte of incoming serial data available (or -1 if no data is available).
+		 * @brief Peek the next received byte without removing it from the RX buffer.
+		 * @return The next byte (0..255), or -1 if no data is available.
 		 */
 		int16_t peek(void);
 
 		/**
-		 * @brief Reads incoming serial data.
-		 * @return The first byte of incoming serial data available (or -1 if no data is available).
-		 * @note It removes data from buffer after read operation.
+		 * @brief Read one byte from the RX buffer.
+		 * @return The next byte (0..255), or -1 if no data is available.
+		 *
+		 * @note This function reads from the internal RX software buffer. In blocking RX mode, prefer
+		 *       readBytes() or HAL_UART_Receive().
 		 */
 		int16_t read(void);
 
 		/**
-		 * @brief reads characters from the serial port into a buffer. 
-		 * The function terminates if the determined length has been read, or it times out.
-		 * returns the number of characters placed in the buffer. A 0 means no valid data was.
-		 * @param buffer: the buffer to store the bytes in. Allowed data types: array of char or byte.
-		 * @param length: the number of bytes to read.
-		 * @return The number of bytes placed in the buffer.
+		 * @brief Read up to @p length bytes into @p buffer.
+		 *
+		 * @param buffer Destination buffer.
+		 * @param length Maximum number of bytes to read.
+		 * @return Number of bytes actually read (0 on timeout / error).
+		 *
+		 * Behavior by RX mode:
+		 * - ::PROGRAM_MODE_BLOCK: reads exactly @p length bytes using HAL_UART_Receive() (or returns 0).
+		 * - ::PROGRAM_MODE_INTERRUPT: reads from the internal RX buffer up to the currently available
+		 *   bytes (min(available(), @p length)).
+		 * - ::PROGRAM_MODE_DMA: not implemented (returns 0 and sets ::errorMessage).
 		 */
 		size_t readBytes(char* buffer, size_t length);
 
 		/**
-		 * @brief Serial.readBytesUntil() reads characters from the serial buffer into an array. 
-		 * The function terminates (checks being done in this order) if the determined length has been read, 
-		 * if it times out (see Serial.setTimeout()), or if the terminator character is detected 
-		 * (in which case the function returns the characters up to the last character before the supplied terminator). 
-		 * The terminator itself is not returned in the buffer.
-		 * @param character: the character to search for.
-		 * @param buffer: the buffer to store the bytes in. Allowed data types: array of char or byte.
-		 * @param length: the number of bytes to read.
-		 * @return The number of bytes placed in the buffer.
-		 * @warning The terminator character is discarded from the serial buffer, 
-		 * unless the number of characters read and copied into the buffer equals length.
+		 * @brief Read bytes into @p buffer until @p character is encountered, @p length is reached, or timeout occurs.
+		 *
+		 * The terminator character is not copied into @p buffer. The resulting buffer is always
+		 * null-terminated.
+		 *
+		 * @param character Terminator to stop at.
+		 * @param buffer    Destination buffer.
+		 * @param length    Size of @p buffer in bytes (including space for the null terminator).
+		 * @return Number of bytes copied (excluding the null terminator).
+		 *
+		 * @warning This function consumes bytes via read() and therefore depends on the internal RX buffer.
+		 *          It is intended for interrupt RX mode.
 		 */
 		size_t readBytesUntil(char character, char* buffer, size_t length);
 
 		/**
-		 * @brief Read all data on RXBuffer and store it in input buffer.
-		 * @param maxLength: the max number of bytes to read.
-		 * @return The number of bytes placed in the buffer.
+		 * @brief Read all currently buffered RX data into @p buffer.
+		 *
+		 * @param buffer     Destination buffer.
+		 * @param maxLength  Maximum bytes to copy.
+		 * @return Number of bytes copied.
+		 *
+		 * @note Data is removed from the RX buffer.
 		 */
 		size_t readAll(char* buffer, size_t maxLength);
 		
 		#if defined(__linux__)
 			/**
-			 * @brief Read all data on RXBuffer and return to string data.
+			 * @brief Read and return all currently buffered RX data as a std::string.
+			 * @return String containing all buffered bytes (may be empty).
+			 *
+			 * @note Data is removed from the RX buffer.
 			 */
 			std::string readAll(void);
 		#endif
 
 		/**
-		 * @brief Tx Transfer completed interrupt callbacks.
+		 * @brief TX transfer complete callback (interrupt mode).
+		 *
+		 * Call this from your HAL_UART_TxCpltCallback() when the callback corresponds to this instance.
+		 * It advances the TX buffer and starts the next chunk if more data is queued.
 		 */
 		void TxCpltCallback(void);
 
 		/**
-		 * @brief Rx Transfer completed interrupt callbacks.
+		 * @brief RX transfer complete callback (interrupt mode).
+		 *
+		 * Call this from your HAL_UART_RxCpltCallback() when the callback corresponds to this instance.
+		 * It pushes the received byte into the RX buffer and re-arms HAL_UART_Receive_IT() for the next byte.
 		 */
 		void RxCpltCallback(void);
 
 		/**
-		 * @brief reads data from the serial buffer until the target is found. The function returns true if target is found, 
-		 * false if it times out.
-		 * @param target: the string to search for.
-		 * @param length:  length of the target.
+		 * @brief Search the RX stream for a byte sequence.
+		 *
+		 * Consumes bytes from the RX buffer until:
+		 * - the sequence @p target is found (returns true), or
+		 * - the operation times out (returns false).
+		 *
+		 * @param target Byte sequence to search for.
+		 * @param length Number of bytes in @p target.
+		 * @return true if found, false on timeout or invalid input.
+		 *
+		 * @note Timeout is controlled by setTimeout().
 		 */
 		bool find(const char* target, size_t length);
 
 		/**
-		 * @brief reads data from the serial buffer until the target is found. The function returns true if target is found, 
-		 * false if it times out.
-		 * @param target: the string to search for.
+		 * @brief Convenience overload of find(const char*, size_t) for std::string.
 		 */
 		bool find(const std::string& target);
 
 		/**
-		 * @brief reads data from the serial buffer until a target string of given length or terminator string is found.
-         * The function returns true if the target string is found, false if it times out.
-		 * @param target: the string to search for.
-		 * @param length:  length of the target.
-		 * @param terminate: the terminal character in the search.
+		 * @brief Search the RX stream for a byte sequence, aborting early on a terminator character.
+		 *
+		 * Consumes bytes from the RX buffer until:
+		 * - the sequence @p target is found (returns true), or
+		 * - @p terminate is read (returns false), or
+		 * - the operation times out (returns false).
+		 *
+		 * @param target    Byte sequence to search for.
+		 * @param length    Number of bytes in @p target.
+		 * @param terminate Terminator character that aborts the search.
+		 * @return true if found, false otherwise.
 		 */
 		bool findUntil(const char* target, size_t length, const char terminate);
 
 		/**
-		 * @brief reads data from the serial buffer until a target string of given length or terminator string is found.
-         * The function returns true if the target string is found, false if it times out.
-		 * @param target: the string to search for.
-		 * @param terminate: the terminal character in the search.
+		 * @brief Convenience overload of findUntil(const char*, size_t, char) for std::string.
 		 */
 		bool findUntil(const std::string target, const char terminate);
 
 		/**
-		 * @brief Waits for the transmission of outgoing serial data to complete.
+		 * @brief Wait for all queued TX data to be transmitted.
+		 *
+		 * This waits until both:
+		 * - the internal TX buffer is empty, and
+		 * - the HAL UART state indicates it is ready (no active transfer).
+		 *
+		 * @param timeoutMs Maximum time to wait in milliseconds.
+		 * @return true if transmission completed within the timeout, false otherwise.
 		 */
 		bool flush(uint32_t timeoutMs);
 
-		bool kickTx();
-
 		/**
-		 * @brief Writes binary data to the serial port.
-		 * @return The number of bytes written, though reading that number is optional.
+		 * @brief Write one byte.
+		 * @param data Byte to write.
+		 * @return Number of bytes written (1) on success, 0 on failure.
 		 */
 		uint16_t write(uint8_t data);
 
 		/**
-		 * @brief Writes binary data to the serial port.
-		 * @return The number of bytes written, though reading that number is optional.
+		 * @brief Write a byte array to the serial port.
+		 *
+		 * @param data   Pointer to data to send.
+		 * @param length Number of bytes to send.
+		 * @return Number of bytes written on success; 0 on failure.
+		 *
+		 * Behavior by TX mode:
+		 * - ::PROGRAM_MODE_BLOCK: calls HAL_UART_Transmit() and may block up to setTimeout().
+		 * - ::PROGRAM_MODE_INTERRUPT: enqueues data in the TX buffer and starts an interrupt-driven
+		 *   transfer if the peripheral is idle.
+		 * - ::PROGRAM_MODE_DMA: not implemented (returns 0 and sets ::errorMessage).
 		 */
 		uint16_t write(uint8_t* data, uint16_t length);
 
 		/**
-		 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
-		 * Numbers are printed using an ASCII character for each digit. Floats are similarly printed as ASCII digits, 
-		 * defaulting to two decimal places.
-		 * @return number of characters that written.
-		 * @note Return value can be 0 or number of character of data. If any error for transmitting data occurred it returns 0.
+		 * @brief Print a null-terminated C-string.
+		 * @param data Text to send (must be null-terminated).
+		 * @return Number of characters written, or 0 on failure.
 		 */
 		uint16_t print(const char* data);
 
@@ -436,57 +578,62 @@ class Serial
 
 	private:
 		
-		/**
-		 * @brief HAL UART handle pointer.
-		 */
+		/// @brief HAL UART handle used for all low-level operations (not owned).
 		UART_HandleTypeDef *_huart;
 
 		/**
-		 * @brief Stream object for manage receive and transmit data on UART communication.
-		 * @note Stream object has advance buffer management for transmit and recieve data.
+		 * @brief Internal Stream instance managing TX/RX buffers.
+		 * @note Stream provides the buffer types (linear/ring) and push/pop helpers.
 		 */
 		Stream stream;
 
-		/// @brief Rx buffer for recieve data.
+		/// @brief Single-byte staging buffer used with HAL_UART_Receive_IT().
 		char _rxBuffer;
 
-		/// @brief Tx buffer size that is transmitting.
+		/// @brief Number of bytes currently being transmitted by HAL (interrupt TX).
 		volatile uint16_t _txBufferSize2Transmitting;
 
-		/**
-		 * @brief The maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
-		 */
+		/// @brief Timeout used for blocking operations and helper methods (ms).
 		unsigned long _timeout;
 
-		/**
-		 * @brief The baudrate- speed for UART communication. Default value is 9600.
-		 * @note Its value can be just: 9600, 57600 or 115200.
-		 */
+		/// @brief UART baud rate last passed to begin().
 		unsigned long _baudRate;
 
-		/**
-		 * @brief UART transmit mode that can be Block mode, Interrupt mode, DMA mode.
-		 * @note - Can be 0: Block mode, 1: Interrupt mode, 3: DMA mode.
-		 * @return true if succeeded.
-		 */
+		/// @brief Current TX mode (one of ::PROGRAM_MODE_*).
 		volatile uint8_t _txMode;
 
-		/**
-		 * @brief UART receive mode that can be Block mode, Interrupt mode, DMA mode.
-		 * @note - Can be 0: Block mode, 1: Interrupt mode, 3: DMA mode.
-		 * @return true if succeeded.
-		 */
+		/// @brief Current RX mode (one of ::PROGRAM_MODE_*).
 		volatile uint8_t _rxMode;
 
-		/// @brief The flag indicate transmitting process is running or finished.
+		/// @brief Indicates whether a transmit operation is considered active.
 		volatile bool _isTransmitting;
 
-		/// @brief The flag indicate receiving process is running or finished.
+		/// @brief Indicates whether reception via interrupt has been started.
 		volatile bool _isReceiving;
 
+		/**
+		 * @brief Start an interrupt-driven TX if the UART is idle.
+		 * @return true if a transfer was started or the UART is busy; false on error.
+		 */
 		bool _startTxIfIdle(void);
 
+		/**
+		 * @brief Enable UART interrupt in NVIC (currently a stub).
+		 *
+		 * NVIC configuration is highly application-specific (IRQ number and priority),
+		 * therefore this function is intentionally left as a placeholder.
+		 */
 		void _EnableIRQ(void);
+
+		/**
+		 * @brief Try to kick off (or continue) an interrupt-driven TX transfer.
+		 *
+		 * If the UART is idle and there is queued TX data, this will start a HAL_UART_Transmit_IT()
+		 * for the next contiguous chunk in the TX buffer.
+		 *
+		 * @return true on success (or if nothing needs to be done), false on failure.
+		 */
+		bool kickTx();
 };
 
 
