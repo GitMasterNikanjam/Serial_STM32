@@ -459,18 +459,55 @@ bool Serial::kickTx()
 {
     if (_huart == nullptr) return false;
 
-    // If HAL says busy, do nothing
+    // If HAL is busy transmitting, there is nothing to start right now.
     if (_huart->gState != HAL_UART_STATE_READY)
+    {
+        _isTransmitting = true;
         return true;
+    }
 
-    uint16_t n = (uint16_t)stream.txContiguousSize();
+    const uint16_t n = (uint16_t)stream.txContiguousSize();
     if (n == 0)
+    {
+        _isTransmitting = false;
         return true;
+    }
 
     const uint8_t* p = (const uint8_t*)stream.txReadPtr();
-    _txBufferSize2Transmitting = n;
+    if (p == nullptr)
+    {
+        _isTransmitting = false;
+        return false;
+    }
 
-    return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, n) == HAL_OK);
+    _txBufferSize2Transmitting = n;
+    _isTransmitting = true;
+
+    const HAL_StatusTypeDef st = HAL_UART_Transmit_IT(_huart, (uint8_t*)p, n);
+    if (st != HAL_OK)
+    {
+        _isTransmitting = false;
+        return false;
+    }
+
+    return true;
+
+    // legacy code:
+
+    // if (_huart == nullptr) return false;
+
+    // // If HAL says busy, do nothing
+    // if (_huart->gState != HAL_UART_STATE_READY)
+    //     return true;
+
+    // uint16_t n = (uint16_t)stream.txContiguousSize();
+    // if (n == 0)
+    //     return true;
+
+    // const uint8_t* p = (const uint8_t*)stream.txReadPtr();
+    // _txBufferSize2Transmitting = n;
+
+    // return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, n) == HAL_OK);
 }
 
 uint16_t Serial::write(uint8_t data)
@@ -527,8 +564,11 @@ void Serial::TxCpltCallback(void)
 
   _txBufferSize2Transmitting = 0;
 
-  // immediately start next chunk if exists
-  kickTx();
+  // Start next chunk if available. kickTx() keeps _isTransmitting in sync.
+  if(!kickTx())
+  {
+    _isTransmitting = false;
+  }
 }
 
 void Serial::RxCpltCallback(void)
@@ -679,18 +719,24 @@ uint16_t Serial::println(double data, uint8_t precision)
 
 bool Serial::_startTxIfIdle()
 {
-    if (_isTransmitting) return true;
+  // kickTx() already checks HAL state, starts a transfer if possible,
+    // and updates _isTransmitting accordingly.
+    return kickTx();
 
-    uint32_t n = stream.txContiguousSize();   // IMPORTANT
-    if (n == 0) return true;                  // nothing to send
+    // legacy code:
 
-    if (n > 0xFFFF) n = 0xFFFF;               // HAL uses uint16_t size
+    // if (_isTransmitting) return true;
 
-    _txBufferSize2Transmitting = (uint16_t)n;
-    _isTransmitting = true;
+    // uint32_t n = stream.txContiguousSize();   // IMPORTANT
+    // if (n == 0) return true;                  // nothing to send
 
-    const char* p = stream.txReadPtr();       // IMPORTANT (tail for ring)
-    return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, _txBufferSize2Transmitting) == HAL_OK);
+    // if (n > 0xFFFF) n = 0xFFFF;               // HAL uses uint16_t size
+
+    // _txBufferSize2Transmitting = (uint16_t)n;
+    // _isTransmitting = true;
+
+    // const char* p = stream.txReadPtr();       // IMPORTANT (tail for ring)
+    // return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, _txBufferSize2Transmitting) == HAL_OK);
 }
 
 void Serial::_EnableIRQ(void)
