@@ -459,55 +459,19 @@ bool Serial::kickTx()
 {
     if (_huart == nullptr) return false;
 
-    // If HAL is busy transmitting, there is nothing to start right now.
     if (_huart->gState != HAL_UART_STATE_READY)
-    {
-        _isTransmitting = true;
         return true;
-    }
 
-    const uint16_t n = (uint16_t)stream.txContiguousSize();
-    if (n == 0)
-    {
-        _isTransmitting = false;
+    const char* p = nullptr;
+    uint32_t n32 = 0;
+    if (!stream.txPeekContiguous(p, n32) || n32 == 0 || p == nullptr)
         return true;
-    }
 
-    const uint8_t* p = (const uint8_t*)stream.txReadPtr();
-    if (p == nullptr)
-    {
-        _isTransmitting = false;
-        return false;
-    }
+    if (n32 > 0xFFFFu) n32 = 0xFFFFu;
+    const uint16_t n = (uint16_t)n32;
 
     _txBufferSize2Transmitting = n;
-    _isTransmitting = true;
-
-    const HAL_StatusTypeDef st = HAL_UART_Transmit_IT(_huart, (uint8_t*)p, n);
-    if (st != HAL_OK)
-    {
-        _isTransmitting = false;
-        return false;
-    }
-
-    return true;
-
-    // legacy code:
-
-    // if (_huart == nullptr) return false;
-
-    // // If HAL says busy, do nothing
-    // if (_huart->gState != HAL_UART_STATE_READY)
-    //     return true;
-
-    // uint16_t n = (uint16_t)stream.txContiguousSize();
-    // if (n == 0)
-    //     return true;
-
-    // const uint8_t* p = (const uint8_t*)stream.txReadPtr();
-    // _txBufferSize2Transmitting = n;
-
-    // return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, n) == HAL_OK);
+    return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, n) == HAL_OK);
 }
 
 uint16_t Serial::write(uint8_t data)

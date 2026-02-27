@@ -451,7 +451,7 @@ class Serial
 		char _rxBuffer;
 
 		/// @brief Tx buffer size that is transmitting.
-		uint16_t _txBufferSize2Transmitting;
+		volatile uint16_t _txBufferSize2Transmitting;
 
 		/**
 		 * @brief The maximum milliseconds to wait for stream data, default is HAL_MAX_DELAY
