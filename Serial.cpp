@@ -56,29 +56,29 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
     return false;
   }
 
-  // Safety: interrupt-driven TX/RX must use ring buffers.
-  // Linear buffers rely on memmove(), which can corrupt data when used concurrently
-  // with HAL interrupt/DMA transfers.
-  if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferType() != BUFFER_RING)
-  {
-    std::snprintf(errorMessage, sizeof(errorMessage), "Tx ring buf");
-    return false;
-  }
-  if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferSize() < 2)
-  {
-    std::snprintf(errorMessage, sizeof(errorMessage), "Tx buf size");
-    return false;
-  }
-  if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferType() != BUFFER_RING)
-  {
-    std::snprintf(errorMessage, sizeof(errorMessage), "Rx ring buf");
-    return false;
-  }
-  if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferSize() < 2)
-  {
-    std::snprintf(errorMessage, sizeof(errorMessage), "Rx buf size");
-    return false;
-  }
+  // // Safety: interrupt-driven TX/RX must use ring buffers.
+  // // Linear buffers rely on memmove(), which can corrupt data when used concurrently
+  // // with HAL interrupt/DMA transfers.
+  // if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferType() != BUFFER_RING)
+  // {
+  //   std::snprintf(errorMessage, sizeof(errorMessage), "Tx ring buf");
+  //   return false;
+  // }
+  // if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferSize() < 2)
+  // {
+  //   std::snprintf(errorMessage, sizeof(errorMessage), "Tx buf size");
+  //   return false;
+  // }
+  // if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferType() != BUFFER_RING)
+  // {
+  //   std::snprintf(errorMessage, sizeof(errorMessage), "Rx ring buf");
+  //   return false;
+  // }
+  // if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferSize() < 2)
+  // {
+  //   std::snprintf(errorMessage, sizeof(errorMessage), "Rx buf size");
+  //   return false;
+  // }
   
   _huart = huart;
   _baudRate = baudRate;
