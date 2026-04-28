@@ -3,7 +3,6 @@
 // Include Libraries:
 
 #include "Serial.h"
-
 #include <cstdio>
 #include <cstring>
 
@@ -247,10 +246,12 @@ bool Serial::find(const char* target, size_t length)
     return false;
 }
 
-bool Serial::find(const std::string& target)
-{
-  return find(target.c_str(), target.length());
-}
+#if defined(_PLATFORM_PC_)
+  bool Serial::find(const std::string& target)
+  {
+    return find(target.c_str(), target.length());
+  }
+#endif
 
 bool Serial::findUntil(const char* target, size_t length, const char terminate)
 {
@@ -294,10 +295,12 @@ bool Serial::findUntil(const char* target, size_t length, const char terminate)
   return false;
 }
 
-bool Serial::findUntil(const std::string target, const char terminate)
-{
-  return findUntil(target.c_str(), target.length(), terminate);
-}
+#if defined(_PLATFORM_PC_)
+  bool Serial::findUntil(const std::string target, const char terminate)
+  {
+    return findUntil(target.c_str(), target.length(), terminate);
+  }
+#endif
 
 int16_t Serial::peek(void)
 {
@@ -556,10 +559,12 @@ uint16_t Serial::print(const char* data)
   return write((uint8_t*)data, dataSize);
 }
 
-uint16_t Serial::print(const std::string& data)
-{
-  return print(data.c_str());
-}
+#if defined(_PLATFORM_PC_)
+  uint16_t Serial::print(const std::string& data)
+  {
+    return print(data.c_str());
+  }
+#endif
 
 uint16_t Serial::print(uint32_t data)
 {
@@ -639,10 +644,12 @@ uint16_t Serial::println(const char* data)
   return dataSize + 1;
 }
 
-uint16_t Serial::println(const std::string& data)
-{
-  return print(data + "\n");
-}
+#if defined(_PLATFORM_PC_)
+  uint16_t Serial::println(const std::string& data)
+  {
+    return print(data + "\n");
+  }
+#endif
 
 uint16_t Serial::println(uint32_t data)
 {

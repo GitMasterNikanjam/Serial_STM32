@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(__linux__) || defined(_WIN32) && !defined(__CC_ARM) && !defined(__ARMCOMPILER_VERSION)
+    #define _PLATFORM_PC_
+#endif
+
 /**
  * @file Serial.h
  * @brief Arduino-like UART serial wrapper built on STM32Cube HAL.
@@ -34,7 +38,10 @@
 #include "stm32h7xx_hal.h"
 #endif
 
-#include <string>				// Provides the std::string class for working with dynamic strings in C++
+#if defined(_PLATFORM_PC_)
+	#include <string>				// Provides the std::string class for working with dynamic strings in C++
+#endif
+
 #include "Stream.h"
 
 // ##############################################################################################
@@ -345,7 +352,7 @@ class Serial
 		 */
 		size_t readAll(char* buffer, size_t maxLength);
 		
-		#if defined(__linux__)
+		#if defined(_PLATFORM_PC_)
 			/**
 			 * @brief Read and return all currently buffered RX data as a std::string.
 			 * @return String containing all buffered bytes (may be empty).
@@ -386,10 +393,12 @@ class Serial
 		 */
 		bool find(const char* target, size_t length);
 
-		/**
-		 * @brief Convenience overload of find(const char*, size_t) for std::string.
-		 */
-		bool find(const std::string& target);
+		#if defined(_PLATFORM_PC_)
+			/**
+			 * @brief Convenience overload of find(const char*, size_t) for std::string.
+			 */
+			bool find(const std::string& target);
+		#endif
 
 		/**
 		 * @brief Search the RX stream for a byte sequence, aborting early on a terminator character.
@@ -406,10 +415,12 @@ class Serial
 		 */
 		bool findUntil(const char* target, size_t length, const char terminate);
 
-		/**
-		 * @brief Convenience overload of findUntil(const char*, size_t, char) for std::string.
-		 */
-		bool findUntil(const std::string target, const char terminate);
+		#if defined(_PLATFORM_PC_)
+			/**
+			 * @brief Convenience overload of findUntil(const char*, size_t, char) for std::string.
+			 */
+			bool findUntil(const std::string target, const char terminate);
+		#endif
 
 		/**
 		 * @brief Wait for all queued TX data to be transmitted.
@@ -452,14 +463,16 @@ class Serial
 		 */
 		uint16_t print(const char* data);
 
-		/**
-		 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
-		 * Numbers are printed using an ASCII character for each digit. Floats are similarly printed as ASCII digits, 
-		 * defaulting to two decimal places.
-		 * @return number of characters that written.
-		 * @note Return value can be 0 or number of character of data. If any error for transmitting data occurred it returns 0.
-		 */
-		uint16_t print(const std::string& data);
+		#if defined(_PLATFORM_PC_)
+			/**
+			 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
+			 * Numbers are printed using an ASCII character for each digit. Floats are similarly printed as ASCII digits, 
+			 * defaulting to two decimal places.
+			 * @return number of characters that written.
+			 * @note Return value can be 0 or number of character of data. If any error for transmitting data occurred it returns 0.
+			 */
+			uint16_t print(const std::string& data);
+		#endif
 
 		/**
 		 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
@@ -516,15 +529,17 @@ class Serial
 		 */
 		uint16_t println(const char* data);
 
-		/**
-		 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
-		 * Numbers are printed using an ASCII character for each digit. Floats are similarly printed as ASCII digits, 
-		 * defaulting to two decimal places.
-		 * @note It sends newline character automatically end of data.
-		 * @return number of characters that written.
-		 * @note Return value can be 0 or number of character of data. If any error for transmitting data occurred it returns 0.
-		 */
-		uint16_t println(const std::string& data);
+		#if defined(_PLATFORM_PC_)
+			/**
+			 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
+			 * Numbers are printed using an ASCII character for each digit. Floats are similarly printed as ASCII digits, 
+			 * defaulting to two decimal places.
+			 * @note It sends newline character automatically end of data.
+			 * @return number of characters that written.
+			 * @note Return value can be 0 or number of character of data. If any error for transmitting data occurred it returns 0.
+			 */
+			uint16_t println(const std::string& data);
+		#endif
 
 		/**
 		 * @brief Prints data to the serial port as human-readable ASCII text. This command can take many forms. 
