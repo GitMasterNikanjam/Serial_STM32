@@ -25,7 +25,20 @@ namespace
 // -----------------------------------------------------------------------------------
 // base and initial methods:
 
-Serial::Serial(char* txBuffer, size_t txBufferSize, char* rxBuffer, size_t rxBufferSize, BufferType txType, BufferType rxType)
+// Serial::Serial(char* txBuffer, size_t txBufferSize, char* rxBuffer, size_t rxBufferSize, BufferType txType, BufferType rxType)
+// {
+// 	_baudRate = 9600;
+//   _huart = nullptr;
+//   _timeout = HAL_MAX_DELAY;
+//   _txMode = PROGRAM_MODE_BLOCK;
+//   _rxMode = PROGRAM_MODE_INTERRUPT;
+//   _isTransmitting = false;
+//   _isReceiving = false;
+//   setTxBuffer(txBuffer, txBufferSize, txType);
+//   setRxBuffer(rxBuffer, rxBufferSize, rxType);
+// }
+
+Serial::Serial(void)
 {
 	_baudRate = 9600;
   _huart = nullptr;
@@ -34,8 +47,6 @@ Serial::Serial(char* txBuffer, size_t txBufferSize, char* rxBuffer, size_t rxBuf
   _rxMode = PROGRAM_MODE_INTERRUPT;
   _isTransmitting = false;
   _isReceiving = false;
-  setTxBuffer(txBuffer, txBufferSize, txType);
-  setRxBuffer(rxBuffer, rxBufferSize, rxType);
 }
 
 bool Serial::begin(unsigned long baudRate)
@@ -58,22 +69,22 @@ bool Serial::begin(UART_HandleTypeDef* huart, unsigned long baudRate)
   // // Safety: interrupt-driven TX/RX must use ring buffers.
   // // Linear buffers rely on memmove(), which can corrupt data when used concurrently
   // // with HAL interrupt/DMA transfers.
-  // if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferType() != BUFFER_RING)
+  // if (_txMode == PROGRAM_MODE_INTERRUPT && stream->getTxBufferType() != BUFFER_RING)
   // {
   //   std::snprintf(errorMessage, sizeof(errorMessage), "Tx ring buf");
   //   return false;
   // }
-  // if (_txMode == PROGRAM_MODE_INTERRUPT && stream.getTxBufferSize() < 2)
+  // if (_txMode == PROGRAM_MODE_INTERRUPT && stream->getTxBufferSize() < 2)
   // {
   //   std::snprintf(errorMessage, sizeof(errorMessage), "Tx buf size");
   //   return false;
   // }
-  // if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferType() != BUFFER_RING)
+  // if (_rxMode == PROGRAM_MODE_INTERRUPT && stream->getRxBufferType() != BUFFER_RING)
   // {
   //   std::snprintf(errorMessage, sizeof(errorMessage), "Rx ring buf");
   //   return false;
   // }
-  // if (_rxMode == PROGRAM_MODE_INTERRUPT && stream.getRxBufferSize() < 2)
+  // if (_rxMode == PROGRAM_MODE_INTERRUPT && stream->getRxBufferSize() < 2)
   // {
   //   std::snprintf(errorMessage, sizeof(errorMessage), "Rx buf size");
   //   return false;
@@ -122,17 +133,17 @@ void Serial::setTimeout(unsigned long timeout)
 
 void Serial::setTxBuffer(char* txBuffer, uint16_t txBufferSize, BufferType txType)
 {
-  stream.setTxBuffer(txBuffer, txBufferSize, txType);
+  stream->setTxBuffer(txBuffer, txBufferSize, txType);
 }
 
 void Serial::setRxBuffer(char* rxBuffer, uint16_t rxBufferSize, BufferType rxType)
 {
-  stream.setRxBuffer(rxBuffer, rxBufferSize, rxType);
+  stream->setRxBuffer(rxBuffer, rxBufferSize, rxType);
 }
 
 void Serial::setBufferTypes(BufferType txType, BufferType rxType)
 {
-  stream.setBufferTypes(txType, rxType);
+  stream->setBufferTypes(txType, rxType);
 }
 
 bool Serial::setTxMode(uint8_t mode)
@@ -146,8 +157,8 @@ bool Serial::setTxMode(uint8_t mode)
   if (mode == PROGRAM_MODE_INTERRUPT /* || mode == PROGRAM_MODE_DMA */)
   {
       // If you can read current tx type from Stream, check it.
-      // Otherwise: document requirement or force it via stream.setBufferTypes().
-      // stream.setBufferTypes(BUFFER_RING, /*keep rx*/ BUFFER_RING or current);
+      // Otherwise: document requirement or force it via stream->setBufferTypes().
+      // stream->setBufferTypes(BUFFER_RING, /*keep rx*/ BUFFER_RING or current);
   }
 
   _txMode = mode;
@@ -172,7 +183,7 @@ bool Serial::setRxMode(uint8_t mode)
 
 uint16_t Serial::available(void)
 {
-  return stream.availableRx();
+  return stream->availableRx();
 }
 
 size_t Serial::availableForWrite(void)
@@ -182,27 +193,27 @@ size_t Serial::availableForWrite(void)
   if (_txMode == PROGRAM_MODE_BLOCK)
     return 0;
 
-  return stream.freeTx();
+  return stream->freeTx();
 } 
 
 void Serial::clearTxBuffer() 
 {
-  stream.clearTxBuffer();
+  stream->clearTxBuffer();
 }
 
 void Serial::clearRxBuffer() 
 {
-  stream.clearRxBuffer();
+  stream->clearRxBuffer();
 }
 
 bool Serial::removeFrontTxBuffer(uint32_t dataSize)
 {
-  return stream.removeFrontTxBuffer(dataSize);
+  return stream->removeFrontTxBuffer(dataSize);
 }
 
 bool Serial::removeFrontRxBuffer(uint32_t dataSize)
 {
-  return stream.removeFrontRxBuffer(dataSize);
+  return stream->removeFrontRxBuffer(dataSize);
 }
 
 bool Serial::find(const char* target, size_t length)
@@ -304,12 +315,12 @@ bool Serial::findUntil(const char* target, size_t length, const char terminate)
 
 int16_t Serial::peek(void)
 {
-  if(stream.availableRx() == 0)
+  if(stream->availableRx() == 0)
   {
     return -1;
   }
 
-  const char* p = stream.rxReadPtr();
+  const char* p = stream->rxReadPtr();
   if (p == nullptr)
     return -1;
 
@@ -318,14 +329,14 @@ int16_t Serial::peek(void)
 
 int16_t Serial::read(void)
 {
-  if(stream.availableRx() == 0)
+  if(stream->availableRx() == 0)
   {
     return -1;
   }
 
   char data = 0;
 
-  stream.popFrontRxBuffer(&data, 1);
+  stream->popFrontRxBuffer(&data, 1);
 
   return data;
 }
@@ -351,7 +362,7 @@ size_t Serial::readBytes(char* buffer, size_t length)
     break;
     case PROGRAM_MODE_INTERRUPT:
       {
-        const size_t availableBytes = stream.availableRx();
+        const size_t availableBytes = stream->availableRx();
         if(availableBytes == 0)
         {
           return 0;
@@ -359,7 +370,7 @@ size_t Serial::readBytes(char* buffer, size_t length)
 
         const size_t bytesToRead = (availableBytes < length) ? availableBytes : length;
 
-        if(stream.popFrontRxBuffer(buffer, bytesToRead) != true)
+        if(stream->popFrontRxBuffer(buffer, bytesToRead) != true)
         {
           return 0;
         }
@@ -414,14 +425,14 @@ size_t Serial::readBytesUntil(char character, char* buffer, size_t length)
 
 size_t Serial::readAll(char* buffer, size_t maxLength)
 {
-  size_t length = stream.availableRx();
+  size_t length = stream->availableRx();
 
   if(length > maxLength)
   {
     length = maxLength;
   }
   
-  if(stream.popFrontRxBuffer(buffer, length) == false)
+  if(stream->popFrontRxBuffer(buffer, length) == false)
   {
     return 0;
   }
@@ -434,7 +445,7 @@ size_t Serial::readAll(char* buffer, size_t maxLength)
   {
     std::string buffer;
 
-    if(stream.popAllRxBuffer(buffer) == false)
+    if(stream->popAllRxBuffer(buffer) == false)
     {
       buffer.assign("");
       return buffer;
@@ -450,7 +461,7 @@ size_t Serial::readAll(char* buffer, size_t maxLength)
 bool Serial::flush(uint32_t timeoutMs)
 {
   uint32_t start = HAL_GetTick();
-  while (stream.availableTx() > 0 || _huart->gState != HAL_UART_STATE_READY)
+  while (stream->availableTx() > 0 || _huart->gState != HAL_UART_STATE_READY)
   {
       if ((HAL_GetTick() - start) > timeoutMs)
           return false;
@@ -467,7 +478,7 @@ bool Serial::kickTx()
 
     const char* p = nullptr;
     uint32_t n32 = 0;
-    if (!stream.txPeekContiguous(p, n32) || n32 == 0 || p == nullptr)
+    if (!stream->txPeekContiguous(p, n32) || n32 == 0 || p == nullptr)
         return true;
 
     if (n32 > 0xFFFFu) n32 = 0xFFFFu;
@@ -495,7 +506,7 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
     break;
     case PROGRAM_MODE_INTERRUPT:
       // Always queue into internal buffer first
-      if (!stream.pushBackTxBuffer((char*)data, length))
+      if (!stream->pushBackTxBuffer((char*)data, length))
         return 0;
 
       // Just attempt. If busy it will do nothing.
@@ -527,7 +538,7 @@ uint16_t Serial::write(uint8_t* data, uint16_t length)
 void Serial::TxCpltCallback(void)
 {   
   // remove the bytes we just sent
-  stream.removeFrontTxBuffer(_txBufferSize2Transmitting);
+  stream->removeFrontTxBuffer(_txBufferSize2Transmitting);
 
   _txBufferSize2Transmitting = 0;
 
@@ -540,7 +551,7 @@ void Serial::TxCpltCallback(void)
 
 void Serial::RxCpltCallback(void)
 {
-  stream.pushBackRxBuffer(&_rxBuffer, 1);
+  stream->pushBackRxBuffer(&_rxBuffer, 1);
   HAL_UART_Receive_IT(_huart, (uint8_t*)&_rxBuffer, 1);
 }
 
@@ -698,7 +709,7 @@ bool Serial::_startTxIfIdle()
 
     // if (_isTransmitting) return true;
 
-    // uint32_t n = stream.txContiguousSize();   // IMPORTANT
+    // uint32_t n = stream->txContiguousSize();   // IMPORTANT
     // if (n == 0) return true;                  // nothing to send
 
     // if (n > 0xFFFF) n = 0xFFFF;               // HAL uses uint16_t size
@@ -706,7 +717,7 @@ bool Serial::_startTxIfIdle()
     // _txBufferSize2Transmitting = (uint16_t)n;
     // _isTransmitting = true;
 
-    // const char* p = stream.txReadPtr();       // IMPORTANT (tail for ring)
+    // const char* p = stream->txReadPtr();       // IMPORTANT (tail for ring)
     // return (HAL_UART_Transmit_IT(_huart, (uint8_t*)p, _txBufferSize2Transmitting) == HAL_OK);
 }
 

@@ -126,6 +126,12 @@ class Serial
 		char errorMessage[32];
 		
 		/**
+		 * @brief Pointer to Stream instance for managing TX/RX buffers.
+		 * @note Stream provides the buffer types (linear/ring) and push/pop helpers.
+		 */
+		Stream *stream;
+
+		/**
 		 * @brief Construct a Serial instance and optionally attach Stream buffers.
 		 *
 		 * @param txBuffer        Pointer to TX buffer storage (may be nullptr).
@@ -137,7 +143,8 @@ class Serial
 		 *
 		 * @note Buffers can be configured later using setTxBuffer()/setRxBuffer().
 		 */
-		Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0, BufferType txType = BUFFER_LINEAR, BufferType rxType = BUFFER_LINEAR);
+		// Serial(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0, BufferType txType = BUFFER_LINEAR, BufferType rxType = BUFFER_LINEAR);
+		Serial(void);
 
 		/**
 		 * @brief Initialize the UART peripheral and start RX/TX according to the selected modes.
@@ -595,12 +602,6 @@ class Serial
 		
 		/// @brief HAL UART handle used for all low-level operations (not owned).
 		UART_HandleTypeDef *_huart;
-
-		/**
-		 * @brief Internal Stream instance managing TX/RX buffers.
-		 * @note Stream provides the buffer types (linear/ring) and push/pop helpers.
-		 */
-		Stream stream;
 
 		/// @brief Single-byte staging buffer used with HAL_UART_Receive_IT().
 		char _rxBuffer;
