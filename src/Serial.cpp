@@ -1,8 +1,9 @@
 
 // ######################################################################################
 // Include Libraries:
-
+#define __STDC_FORMAT_MACROS
 #include "Serial.h"
+#include <inttypes.h>
 #include <cstdio>
 #include <cstring>
 
@@ -607,6 +608,8 @@ uint16_t Serial::print(uint64_t data)
 {
     char buffer[30]; // Buffer to hold the ASCII representation of the number (up to 3 digits + null terminator)
     int length = std::snprintf(buffer, sizeof(buffer), "%llu", data); // Convert the uint8_t to string
+    // Use PRIu64 to ensure correct format for 64-bit integers on the target
+//	int length = std::snprintf(buffer, sizeof(buffer), "%" PRIu64, data);
 
     if(length <= 0 || length >= (int)sizeof(buffer))
     {
